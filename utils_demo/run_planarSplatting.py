@@ -12,8 +12,8 @@ def run_planarSplatting(data, conf):
                                     is_continue=False,
                                     timestamp='latest',
                                     checkpoint='latest',
-                                    do_vis=True,
-                                    scan_id='-1',
+                                    do_vis=False,
+                                    # scan_id='-1',
                                     data=data,
                                     )
     runner.run()
