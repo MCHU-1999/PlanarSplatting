@@ -91,11 +91,11 @@ if __name__ == '__main__':
     if not os.path.exists(image_path):
         raise ValueError(f'The input image path {image_path} does not exist.')
 
-    colmap_cam_file_path = os.path.join(data_path, 'sparse/cameras.bin')
+    colmap_cam_file_path = os.path.join(data_path, 'sparse/0/cameras.bin')
     if not os.path.exists(colmap_cam_file_path):
         raise ValueError(f'The input path {colmap_cam_file_path} does not exist.')
     
-    colmap_image_file_path = os.path.join(data_path, 'sparse/images.bin')
+    colmap_image_file_path = os.path.join(data_path, 'sparse/0/images.bin')
     if not os.path.exists(colmap_image_file_path):
         raise ValueError(f'The input path {colmap_image_file_path} does not exist.')
 
