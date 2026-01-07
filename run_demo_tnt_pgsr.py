@@ -6,9 +6,7 @@ import torch
 import numpy as np
 from pyhocon import ConfigFactory
 from pyhocon import ConfigTree
-from utils_demo.run_metric3d import extract_mono_geo_demo
 from utils_demo.run_planarSplatting import run_planarSplatting
-from utils_demo.read_write_model import read_model
 from planarsplat.data_process.scannetpp.colmap_io import read_extrinsics_binary, read_intrinsics_binary, qvec2rotmat
 from PIL import Image
 import cv2
