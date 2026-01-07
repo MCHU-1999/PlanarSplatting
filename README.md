@@ -25,7 +25,7 @@ We present PlanarSplatting, an ultra-fast and accurate surface reconstruction ap
 ## ⚙️ Installation
 ### 1. Clone PlanarSplatting
 ```
-git clone https://github.com/ant-research/PlanarSplatting.git --recursive 
+git clone https://github.com/MCHU-1999/PlanarSplatting.git --recursive 
 ```
 ### 2. Create the enviroment
 ```
