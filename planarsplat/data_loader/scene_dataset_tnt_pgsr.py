@@ -42,18 +42,73 @@ class ViewInfo(nn.Module):
         self.raster_img_center = cam_info['raster_img_center'].cuda()
         self.cam_loc = cam_info['cam_loc'].cuda()
 
-        # get gt info
-        self.rgb = gt_info['rgb'].cuda()
-        self.mono_depth = gt_info['mono_depth'].cuda()
-        self.mono_normal_local = gt_info['mono_normal_local'].cuda()
-        self.mono_normal_global = gt_info['mono_normal_global'].cuda()
-        self.index = gt_info['index']
+        # Store paths for lazy loading
         self.image_path = gt_info['image_path']
+        self.depth_path = gt_info['depth_path']
+        self.normal_path = gt_info['normal_path']
+        self.index = gt_info['index']
+        
+        # Store image resolution and scene bounding sphere for processing
+        self.img_res = gt_info['img_res']
+        self.scene_bounding_sphere = gt_info['scene_bounding_sphere']
+        
+        # Cache for loaded data (will be loaded on demand)
+        self._rgb_cache = None
+        self._mono_depth_cache = None
+        self._mono_normal_global_cache = None
 
         # other info
         self.scale = 1.0
         self.shift = 0.0
         self.plane_depth = None
+    
+    def _load_rgb(self):
+        """Lazy load RGB image"""
+        if self._rgb_cache is None:
+            from PIL import Image
+            rgb = np.array(Image.open(self.image_path))
+            rgb = torch.from_numpy(rgb).cuda().float() / 255.0  # h, w, 3
+            self._rgb_cache = rgb.reshape(-1, 3)  # hw, 3
+        return self._rgb_cache
+    
+    def _load_depth(self):
+        """Lazy load depth map"""
+        if self._mono_depth_cache is None:
+            depth = np.load(self.depth_path)
+            depth = torch.from_numpy(depth).cuda().float()  # h, w
+            depth[depth > 2.0 * self.scene_bounding_sphere] = 0.
+            self._mono_depth_cache = depth.reshape(-1)  # hw
+        return self._mono_depth_cache
+    
+    def _load_normals(self):
+        """Lazy load normal maps and transform to global"""
+        if self._mono_normal_global_cache is None:
+            normal = np.load(self.normal_path)
+            normal_local = torch.from_numpy(normal).cuda().float() * 2.0 - 1.0  # h, w, 3
+            normal_local = normal_local.reshape(-1, 3)  # hw, 3
+            
+            # Transform to global coordinates
+            normal_global = normal_local @ self.pose[:3, :3].T
+            self._mono_normal_global_cache = normal_global
+        return self._mono_normal_global_cache
+    
+    @property
+    def rgb(self):
+        return self._load_rgb()
+    
+    @property
+    def mono_depth(self):
+        return self._load_depth()
+    
+    @property
+    def mono_normal_local(self):
+        # Since trainer doesn't use this, just return transformed global normals
+        normal_global = self._load_normals()
+        return normal_global @ self.pose[:3, :3]  # Transform back to local if needed
+    
+    @property
+    def mono_normal_global(self):
+        return self._load_normals()
 
 class SceneDatasetDemo:
     def __init__(
@@ -63,9 +118,6 @@ class SceneDatasetDemo:
         dataset_name: str = 'demo_tnt_pgsr',
         scan_id: str = 'example',
         scene_bounding_sphere: float = 5.0,
-        pre_align: bool = False,
-        voxel_length: float=0.05,
-        sdf_trunc: float=0.08,
         **kwargs,
     ):
         self.dataset_name = dataset_name
@@ -75,37 +127,25 @@ class SceneDatasetDemo:
         self.total_pixels = img_res[0] * img_res[1]
         self.img_res = img_res  # [height, width]
 
+        # Expect paths to be provided - clean and simple
         image_paths = data['image_paths']
+        depth_paths = data['depth_paths']
+        normal_paths = data['normal_paths']
+        
         self.n_images = len(image_paths)
+        
+        # Validate paths count
+        assert len(depth_paths) == self.n_images, f"Depth paths count mismatch: {len(depth_paths)} vs {self.n_images}"
+        assert len(normal_paths) == self.n_images, f"Normal paths count mismatch: {len(normal_paths)} vs {self.n_images}"
 
-        # load camera
+        # load camera parameters only (lightweight)
         self.intrinsics_all = [torch.from_numpy(intrinsic).cuda() for intrinsic in data['intrinsics']]
         self.poses_all = [torch.from_numpy(extrinsic).cuda() for extrinsic in data['extrinsics']]
         
-        # load rgbs
-        rgbs = [torch.from_numpy(rgb).cuda().float()/255. for rgb in data['color']]
-        rgbs = torch.stack(rgbs, dim=0).contiguous()  # n, h, w, 3
-        assert rgbs.shape[0] == self.n_images
-        assert rgbs.shape[1] == img_res[0]
-        assert rgbs.shape[2] == img_res[1]
-        rgbs = rgbs.reshape(self.n_images, -1, 3)  # n, hw, 3
-
-        # load depths
-        mono_depths = [torch.from_numpy(depth).cuda() for depth in data['depth']]
-        mono_depths = torch.stack(mono_depths, dim=0).contiguous()   # n, h, w
-        assert mono_depths.shape[0] == self.n_images
-        assert mono_depths.shape[1] == img_res[0]
-        assert mono_depths.shape[2] == img_res[1]
-        mono_depths[mono_depths > 2.0 * self.scene_bounding_sphere] = 0.
-        mono_depths = mono_depths.reshape(self.n_images, -1)  # n, hw
-
-        # load normals
-        mono_normals = [torch.from_numpy(normal).cuda()*2.-1. for normal in data['normal']]
-        mono_normals = torch.stack(mono_normals, dim=0).permute(0, 2, 3, 1).contiguous()  # n, h, w, 3
-        assert mono_normals.shape[0] == self.n_images
-        assert mono_normals.shape[1] == img_res[0]
-        assert mono_normals.shape[2] == img_res[1]
-        mono_normals = mono_normals.reshape(self.n_images, -1, 3)  # n, hw, 3
+        # Store paths
+        self.image_paths = image_paths
+        self.depth_paths = depth_paths
+        self.normal_paths = normal_paths
 
         absolute_img_path = os.path.abspath(image_paths[0])
         current_dir = os.path.dirname(absolute_img_path)
@@ -133,20 +173,16 @@ class SceneDatasetDemo:
                 "cam_loc": cam_loc.squeeze(0),
             }
 
-            normal_local = mono_normals[idx].clone().cuda()
-            normal_global = normal_local @ self.poses_all[idx][:3, :3].T
-
             gt_info = {
-                "rgb": rgbs[idx],
                 "image_path": image_paths[idx],
-                "mono_depth": mono_depths[idx],
-                "mono_normal_global": normal_global,
-                "mono_normal_local": normal_local,
+                "depth_path": depth_paths[idx],
+                "normal_path": normal_paths[idx],
+                "img_res": img_res,
+                "scene_bounding_sphere": self.scene_bounding_sphere,
                 'index': idx
             }
-            self.view_info_list.append(ViewInfo(cam_info, gt_info))      
-
-            
+                
+            self.view_info_list.append(ViewInfo(cam_info, gt_info))
 
         logger.info('data loader finished')
     

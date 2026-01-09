@@ -12,59 +12,30 @@ from PIL import Image
 import cv2
 
 
-def get_depth_normal(depth_prior_path: str, normal_prior_path: str, img_id_list):
-    normal_maps_list = []
-    depth_maps_list = []
+def get_depth_normal_paths(depth_prior_path: str, normal_prior_path: str, img_id_list):
+    """Get paths to depth and normal files instead of loading them"""
+    normal_paths = []
+    depth_paths = []
 
     for img_id in img_id_list:
         # Format the integer ID into a 6-digit string with leading zeros
         filename = f"{img_id:06d}.npy"
 
-        # Load depth map
+        # Get depth file path
         depth_file_path = os.path.join(depth_prior_path, filename)
         if os.path.exists(depth_file_path):
-            depth_map = np.load(depth_file_path)
-            depth_maps_list.append(depth_map)
+            depth_paths.append(depth_file_path)
         else:
             raise FileNotFoundError(f"Depth file not found: {depth_file_path}")
 
-        # Load normal map
+        # Get normal file path
         normal_file_path = os.path.join(normal_prior_path, filename)
         if os.path.exists(normal_file_path):
-            normal_map = np.load(normal_file_path)
-            normal_maps_list.append(normal_map)
+            normal_paths.append(normal_file_path)
         else:
             raise FileNotFoundError(f"Normal file not found: {normal_file_path}")
 
-    return depth_maps_list, normal_maps_list
-
-def get_process_depth_normal(depth_prior_path: str, normal_prior_path: str, img_id_list):
-    normal_maps_list = []
-    depth_maps_list = []
-
-    for img_id in img_id_list:
-        # Format the integer ID into a 6-digit string with leading zeros
-        filename = f"{img_id:06d}.npy"
-
-        # Load and process depth map
-        depth_file_path = os.path.join(depth_prior_path, filename)
-        if os.path.exists(depth_file_path):
-            depth_map = np.load(depth_file_path)
-            depth_map = np.clip(depth_map, 0, 300)  # Clip depth to [0, 300]
-            depth_maps_list.append(depth_map)
-        else:
-            raise FileNotFoundError(f"Depth file not found: {depth_file_path}")
-
-        # Load and process normal map
-        normal_file_path = os.path.join(normal_prior_path, filename)
-        if os.path.exists(normal_file_path):
-            normal_map = np.load(normal_file_path)
-            normal_map = (normal_map + 1) / 2.0  # Normalize normals to [0, 1]
-            normal_maps_list.append(normal_map)
-        else:
-            raise FileNotFoundError(f"Normal file not found: {normal_file_path}")
-
-    return depth_maps_list, normal_maps_list
+    return depth_paths, normal_paths
 
 
 if __name__ == '__main__':
@@ -146,13 +117,13 @@ if __name__ == '__main__':
             color_images_list.append(rgb)
             img_id_list.append(img_id)
 
-        # Fetch pre-computed, aligned depth and normal maps
-        depth_maps_list, normal_maps_list = get_depth_normal(depth_prior_path, normal_prior_path, img_id_list)
+        # Fetch pre-computed, aligned depth and normal maps paths (lazy loading)
+        depth_paths, normal_paths = get_depth_normal_paths(depth_prior_path, normal_prior_path, img_id_list)
 
         data = {
             'color': color_images_list,
-            'depth': depth_maps_list,
-            'normal': normal_maps_list,
+            'depth_paths': depth_paths,  # Store paths instead of loaded data
+            'normal_paths': normal_paths,  # Store paths instead of loaded data
             'image_paths': image_paths_list,
             'extrinsics': c2ws_list,  # c2w
             'intrinsics': intrinsics_list,
