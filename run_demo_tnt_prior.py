@@ -153,7 +153,7 @@ if __name__ == '__main__':
         img_res = [h, w]
         del color_images_list
 
-        cam_intrinsics, images_metas, points3d = read_model(os.path.join(data_path, "sparse"), ext=".bin")
+        cam_intrinsics, images_metas, points3d = read_model(os.path.join(data_path, "0", "sparse"), ext=".bin")
         pts_indices = np.array([points3d[key].id for key in points3d])
         pts_xyzs = np.array([points3d[key].xyz for key in points3d])
         points3d_ordered = np.zeros([pts_indices.max()+1, 3])
