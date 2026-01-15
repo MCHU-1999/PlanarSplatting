@@ -73,7 +73,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument("-d", "--data_path", type=str, default='path/to/colmap/data', help='path of input colmap data')
     parser.add_argument("-o", "--out_path", type=str, default='planarSplat_ExpRes/demo_colmap', help='path of output dir')
-    parser.add_argument("--conf_path", type=str, default='utils_demo/demo_scan24.conf', help='path of configure file')
+    parser.add_argument("--conf_path", type=str, default='utils_demo/demo.conf', help='path of configure file')
     parser.add_argument('--use_precomputed_data', default=False, action="store_true", help='use processed data from input images')
     args = parser.parse_args()
 
@@ -171,7 +171,7 @@ if __name__ == '__main__':
         torch.save(data, precomputed_data_path)
 
     # load conf
-    base_conf = ConfigFactory.parse_file('planarsplat/confs/base_conf_scan24.conf')
+    base_conf = ConfigFactory.parse_file('planarsplat/confs/base_conf_planarSplatCuda.conf')
     demo_conf = ConfigFactory.parse_file(args.conf_path)
     conf = ConfigTree.merge_configs(base_conf, demo_conf)
     conf.put('train.exps_folder_name', out_path)
