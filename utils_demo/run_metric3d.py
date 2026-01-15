@@ -165,6 +165,13 @@ def extract_mono_geo_demo(color_images, color_intrinsics, model_type='metric3d_v
     depth_maps_list = []
 
     for i, (rgb_origin, intrinsic_matrix) in enumerate(zip(color_images, color_intrinsics)):
+        # Convert RGBA to RGB if necessary
+        if rgb_origin.shape[2] == 4:
+            print(f"Warning: Image {i} has 4 channels (RGBA), converting to RGB")
+            rgb_origin = rgb_origin[:, :, :3]  # Take only RGB channels
+        elif rgb_origin.shape[2] != 3:
+            raise ValueError(f"Image {i} has {rgb_origin.shape[2]} channels, expected 3 (RGB)")
+
         intrinsic = [intrinsic_matrix[0, 0], intrinsic_matrix[1, 1], intrinsic_matrix[0, 2], intrinsic_matrix[1, 2]]
 
         #### ajust input size to fit pretrained model
