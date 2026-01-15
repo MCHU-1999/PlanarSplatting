@@ -134,7 +134,7 @@ if __name__ == '__main__':
     # load conf
     base_conf = ConfigFactory.parse_file('planarsplat/confs/base_conf_planarSplatCuda.conf')
     demo_conf = ConfigFactory.parse_file(args.conf_path)
-    conf = ConfigTree.merge_configs(base_conf, demo_conf)
+    conf = ConfigTree.merge_configs(base_conf, demo_conf)   # Use demo_conf to overwrite base_conf
     conf.put('train.exps_folder_name', out_path)
     img_res = [data['color'][0].shape[0], data['color'][0].shape[1]]
     conf.put('dataset.img_res', img_res)
