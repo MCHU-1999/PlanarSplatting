@@ -85,11 +85,11 @@ if __name__ == '__main__':
     if not os.path.exists(image_path):
         raise ValueError(f'The input image path {image_path} does not exist.')
 
-    colmap_cam_file_path = os.path.join(data_path, 'sparse/cameras.bin')
+    colmap_cam_file_path = os.path.join(data_path, 'sparse/0/cameras.bin')
     if not os.path.exists(colmap_cam_file_path):
         raise ValueError(f'The input path {colmap_cam_file_path} does not exist.')
     
-    colmap_image_file_path = os.path.join(data_path, 'sparse/images.bin')
+    colmap_image_file_path = os.path.join(data_path, 'sparse/0/images.bin')
     if not os.path.exists(colmap_image_file_path):
         raise ValueError(f'The input path {colmap_image_file_path} does not exist.')
 
@@ -143,7 +143,7 @@ if __name__ == '__main__':
         # run metric3dv2
         depth_maps_list, normal_maps_list = extract_mono_geo_demo(color_images_list, intrinsics_list)
 
-        cam_intrinsics, images_metas, points3d = read_model(os.path.join(data_path, "sparse"), ext=".bin")
+        cam_intrinsics, images_metas, points3d = read_model(os.path.join(data_path, "sparse", "0"), ext=".bin")
         pts_indices = np.array([points3d[key].id for key in points3d])
         pts_xyzs = np.array([points3d[key].xyz for key in points3d])
         points3d_ordered = np.zeros([pts_indices.max()+1, 3])
